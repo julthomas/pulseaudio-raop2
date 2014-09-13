@@ -8,3 +8,4 @@ Type=Application
 Categories=
 GenericName=
 OnlyShowIn=KDE;
+X-KDE-autostart-phase=1

@@ -70,9 +70,9 @@
 #define JACK_TYPE_ANALOG 0
 #define JACK_TYPE_DIGITAL 1
 
-#define VOLUME_DEF -30
-#define VOLUME_MIN -144
-#define VOLUME_MAX 0
+#define VOLUME_DEF -30.0
+#define VOLUME_MIN -144.0
+#define VOLUME_MAX 0.0
 
 #define DEFAULT_RAOP_PORT 5000
 #define UDP_DEFAULT_AUDIO_PORT 6000
@@ -1385,7 +1385,7 @@ pa_volume_t pa_raop_client_adjust_volume(pa_raop_client *c, pa_volume_t volume) 
         return volume;
 
     maxv = pa_sw_volume_from_dB(0.0);
-    minv = maxv * pow(10.0, (double) VOLUME_DEF / 60.0);
+    minv = maxv * pow(10.0, VOLUME_DEF / 60.0);
 
     return volume - volume * (minv / maxv) + minv;
 }

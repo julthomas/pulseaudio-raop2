@@ -145,9 +145,6 @@ enum {
     SINK_MESSAGE_UDP_DISCONNECTED,
 };
 
-/* Forward declarations: */
-static void sink_set_volume_cb(pa_sink *);
-
 static void tcp_on_connection(int fd, void *userdata) {
     int so_sndbuf = 0;
     socklen_t sl = sizeof(int);
@@ -165,7 +162,7 @@ static void tcp_on_connection(int fd, void *userdata) {
     }
 
     /* Set the initial volume. */
-    sink_set_volume_cb(u->sink);
+    pa_raop_client_set_volume_min(u->raop);
 
     pa_log_debug("Connection authenticated, handing fd to IO thread...");
 
@@ -419,56 +416,6 @@ static int udp_sink_process_msg(pa_msgobject *o, int code, void *data, int64_t o
     return pa_sink_process_msg(o, code, data, offset, chunk);
 }
 
-static void sink_set_volume_cb(pa_sink *s) {
-    struct userdata *u = s->userdata;
-    pa_cvolume hw;
-    pa_volume_t v, v_orig;
-    char t[PA_CVOLUME_SNPRINT_VERBOSE_MAX];
-
-    pa_assert(u);
-
-    /* If we're muted we don't need to do anything. */
-    if (s->muted)
-        return;
-
-    /* Calculate the max volume of all channels.
-     * We'll use this as our (single) volume on the APEX device and emulate
-     * any variation in channel volumes in software. */
-    v = pa_cvolume_max(&s->real_volume);
-
-    v_orig = v;
-    v = pa_raop_client_adjust_volume(u->raop, v_orig);
-
-    pa_log_debug("Volume adjusted: orig=%u adjusted=%u", v_orig, v);
-
-    /* Create a pa_cvolume version of our single value. */
-    pa_cvolume_set(&hw, s->sample_spec.channels, v);
-
-    /* Set the real volume based on given original volume. */
-    pa_cvolume_set(&s->real_volume, s->sample_spec.channels, v_orig);
-
-    pa_log_debug("Requested volume: %s", pa_cvolume_snprint_verbose(t, sizeof(t), &s->real_volume, &s->channel_map, false));
-    pa_log_debug("Got hardware volume: %s", pa_cvolume_snprint_verbose(t, sizeof(t), &hw, &s->channel_map, false));
-    pa_log_debug("Calculated software volume: %s",
-                 pa_cvolume_snprint_verbose(t, sizeof(t), &s->soft_volume, &s->channel_map, true));
-
-    /* Any necessary software volume manipulation is done so set
-     * our hw volume (or v as a single value) on the device. */
-    pa_raop_client_set_volume(u->raop, v);
-}
-
-static void sink_set_mute_cb(pa_sink *s) {
-    struct userdata *u = s->userdata;
-
-    pa_assert(u);
-
-    if (s->muted) {
-        pa_raop_client_set_volume(u->raop, PA_VOLUME_MUTED);
-    } else {
-        sink_set_volume_cb(s);
-    }
-}
-
 static void udp_setup_cb(int control_fd, int timing_fd, void *userdata) {
     struct userdata *u = userdata;
 
@@ -490,7 +437,7 @@ static void udp_record_cb(void *userdata) {
     pa_assert(u);
 
     /* Set the initial volume. */
-    sink_set_volume_cb(u->sink);
+    pa_raop_client_set_volume_min(u->raop);
 
     pa_log_debug("Synchronization done, pushing job to IO thread...");
 
@@ -945,8 +892,8 @@ int pa__init(pa_module *m) {
     else
         u->sink->parent.process_msg = udp_sink_process_msg;
     u->sink->userdata = u;
-    pa_sink_set_set_volume_callback(u->sink, sink_set_volume_cb);
-    pa_sink_set_set_mute_callback(u->sink, sink_set_mute_cb);
+    pa_sink_set_set_volume_callback(u->sink, NULL);
+    pa_sink_set_set_mute_callback(u->sink, NULL);
     u->sink->flags = PA_SINK_LATENCY|PA_SINK_NETWORK;
 
     pa_sink_set_asyncmsgq(u->sink, u->thread_mq.inq);

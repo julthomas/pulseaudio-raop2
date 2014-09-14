@@ -48,8 +48,7 @@ int pa_raop_client_udp_can_stream(pa_raop_client *c);
 int pa_raop_client_udp_stream(pa_raop_client *c);
 
 void pa_raop_client_set_encryption(pa_raop_client *c, int encryption);
-pa_volume_t pa_raop_client_adjust_volume(pa_raop_client *c, pa_volume_t volume);
-int pa_raop_client_set_volume(pa_raop_client *c, pa_volume_t volume);
+int pa_raop_client_set_volume_min(pa_raop_client *c);
 int pa_raop_client_encode_sample(pa_raop_client *c, pa_memchunk *raw, pa_memchunk *encoded);
 
 int pa_raop_client_udp_handle_timing_packet(pa_raop_client *c, const uint8_t packet

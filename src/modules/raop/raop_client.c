@@ -1377,6 +1377,44 @@ ssize_t pa_raop_client_udp_send_audio_packet(pa_raop_client *c, pa_memchunk *blo
     return len;
 }
 
+/* Adjust volume so that it fits into VOLUME_DEF <= v <= 0 dB */
+pa_volume_t pa_raop_client_adjust_volume(pa_raop_client *c, pa_volume_t volume) {
+    double minv, maxv;
+
+    if (c->protocol != RAOP_UDP)
+        return volume;
+
+    maxv = pa_sw_volume_from_dB(0.0);
+    minv = maxv * pow(10.0, VOLUME_DEF / 60.0);
+
+    return volume - volume * (minv / maxv) + minv;
+}
+
+int pa_raop_client_set_volume(pa_raop_client *c, pa_volume_t volume) {
+    int rv = 0;
+    double db;
+    char *param;
+
+    pa_assert(c);
+
+    db = pa_sw_volume_to_dB(volume);
+    if (db < VOLUME_MIN)
+        db = VOLUME_MIN;
+    else if (db > VOLUME_MAX)
+        db = VOLUME_MAX;
+
+    pa_log_debug("volume=%u db=%.6f", volume, db);
+
+    param = pa_sprintf_malloc("volume: %0.6f\r\n",  db);
+
+    /* We just hit and hope, cannot wait for the callback. */
+    if (c->rtsp != NULL && pa_rtsp_exec_ready(c->rtsp))
+        rv = pa_rtsp_setparameter(c->rtsp, param);
+    pa_xfree(param);
+
+    return rv;
+}
+
 int pa_raop_client_set_volume_min(pa_raop_client *c) {
     int rv = 0;
     char *param;

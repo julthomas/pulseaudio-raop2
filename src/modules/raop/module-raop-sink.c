@@ -924,11 +924,11 @@ int pa__init(pa_module *m) {
     }
 
     protect_speakers = pa_modargs_get_value(ma, "protect_speakers", NULL);
-    if (protect_speakers == NULL || pa_streq(protect_speakers, "1"))
-        /* Assume 1 (speaker protection) by default */
-        u->protect_speakers = 1;
-    else if (pa_streq(protect_speakers, "0"))
+    if (protect_speakers == NULL || pa_streq(protect_speakers, "0"))
+        /* Assume 0 (no speaker protection) by default */
         u->protect_speakers = 0;
+    else if (pa_streq(protect_speakers, "1"))
+        u->protect_speakers = 1;
     else {
         pa_log("Unsupported protect_speakers argument given: %s", protect_speakers);
         goto fail;

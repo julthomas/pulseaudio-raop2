@@ -159,7 +159,6 @@ static void sink_set_volume_cb(pa_sink *s) {
     pa_raop_client_set_volume(u->raop, v);
 }
 
-
 static int sink_process_msg(pa_msgobject *o, int code, void *data, int64_t offset, pa_memchunk *chunk) {
     struct userdata *u = PA_SINK(o)->userdata;
 

@@ -159,6 +159,19 @@ static void sink_set_volume_cb(pa_sink *s) {
     pa_raop_client_set_volume(u->raop, v);
 }
 
+static void sink_set_mute_cb(pa_sink *s) {
+    struct userdata *u = s->userdata;
+
+    pa_assert(u);
+    pa_assert(u->raop);
+
+    if (s->muted) {
+        pa_raop_client_set_volume(u->raop, PA_VOLUME_MUTED);
+    } else {
+        sink_set_volume_cb(s);
+    }
+}
+
 static int sink_process_msg(pa_msgobject *o, int code, void *data, int64_t offset, pa_memchunk *chunk) {
     struct userdata *u = PA_SINK(o)->userdata;
 
@@ -305,19 +318,6 @@ static int sink_process_msg(pa_msgobject *o, int code, void *data, int64_t offse
     }
 
     return pa_sink_process_msg(o, code, data, offset, chunk);
-}
-
-static void sink_set_mute_cb(pa_sink *s) {
-    struct userdata *u = s->userdata;
-
-    pa_assert(u);
-    pa_assert(u->raop);
-
-    if (s->muted) {
-        pa_raop_client_set_volume(u->raop, PA_VOLUME_MUTED);
-    } else {
-        sink_set_volume_cb(s);
-    }
 }
 
 static void thread_func(void *userdata) {

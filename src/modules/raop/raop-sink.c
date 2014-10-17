@@ -79,6 +79,7 @@ struct userdata {
     pa_raop_protocol_t protocol;
     pa_raop_encryption_t encryption;
     pa_raop_codec_t codec;
+    int protect_speakers;
 
     size_t block_size;
     pa_memchunk memchunk;
@@ -281,7 +282,10 @@ static int sink_process_msg(pa_msgobject *o, int code, void *data, int64_t offse
                         pa_raop_client_flush(u->raop);
                     } else {
                         /* Set the initial volume */
-                        sink_set_volume_cb(u->sink);
+                        if (u->protect_speakers)
+                            pa_raop_client_set_volume(u->raop, PA_VOLUME_MUTED);
+                        else
+                            sink_set_volume_cb(u->sink);
                     }
 
                     return 0;
@@ -454,7 +458,7 @@ pa_sink* pa_raop_sink_new(pa_module *m, pa_modargs *ma, const char *driver) {
     struct userdata *u = NULL;
     pa_sample_spec ss;
     char *thread_name = NULL;
-    const char *server, *protocol, *encryption, *codec;
+    const char *server, *protocol, *encryption, *codec, *protect_speakers;
     const char /* *username, */ *password;
     pa_sink_new_data data;
     const char *name = NULL;
@@ -513,6 +517,7 @@ pa_sink* pa_raop_sink_new(pa_module *m, pa_modargs *ma, const char *driver) {
 
     encryption = pa_modargs_get_value(ma, "encryption", NULL);
     codec = pa_modargs_get_value(ma, "codec", NULL);
+    protect_speakers = pa_modargs_get_value(ma, "protect_speakers", NULL);
 
     if (!encryption) {
         u->encryption = PA_RAOP_ENCRYPTION_NONE;
@@ -533,6 +538,18 @@ pa_sink* pa_raop_sink_new(pa_module *m, pa_modargs *ma, const char *driver) {
         u->codec = PA_RAOP_CODEC_ALAC;
     } else {
         pa_log("Unsupported audio codec argument: %s", codec);
+        goto fail;
+    }
+
+    if (!protect_speakers) {
+        /* assume 0 (no speaker protection) by default */
+        u->protect_speakers = 0;
+    } else if(pa_streq(protect_speakers, "0")) {
+        u->protect_speakers = 0;
+    } else if (pa_streq(protect_speakers, "1")) {
+        u->protect_speakers = 1;
+    } else {
+        pa_log("Unsupported protect_speakers argument: %s", protect_speakers);
         goto fail;
     }
 
@@ -572,8 +589,15 @@ pa_sink* pa_raop_sink_new(pa_module *m, pa_modargs *ma, const char *driver) {
     }
 
     u->sink->parent.process_msg = sink_process_msg;
-    pa_sink_set_set_volume_callback(u->sink, sink_set_volume_cb);
-    pa_sink_set_set_mute_callback(u->sink, sink_set_mute_cb);
+
+    if (u->protect_speakers) {
+        pa_sink_set_set_volume_callback(u->sink, NULL);
+        pa_sink_set_set_mute_callback(u->sink, NULL);
+    } else {
+        pa_sink_set_set_volume_callback(u->sink, sink_set_volume_cb);
+        pa_sink_set_set_mute_callback(u->sink, sink_set_mute_cb);
+    }
+
     u->sink->userdata = u;
 
     pa_sink_set_asyncmsgq(u->sink, u->thread_mq.inq);

@@ -47,6 +47,7 @@ PA_MODULE_USAGE(
         "format=<sample format> "
         "rate=<sample rate> "
         "channels=<number of channels> "
+        "protect_speakers=<1|0> "
         "username=<authentication user name, default: \"iTunes\"> "
         "password=<authentication password>");
 
@@ -61,6 +62,7 @@ static const char* const valid_modargs[] = {
     "format",
     "rate",
     "channels",
+    "protect_speakers",
     "username",
     "password",
     NULL
